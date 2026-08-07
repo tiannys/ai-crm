@@ -10,6 +10,7 @@ import { lineRouter } from './routes/line';
 import { usersRouter } from './routes/users';
 import { auditRouter } from './routes/audit';
 import { exportRouter } from './routes/export';
+import { publicRouter } from './routes/public';
 
 // ─── Rate Limiters ───────────────────────────────────────────────
 const authLimiter = rateLimit({
@@ -77,6 +78,7 @@ app.use((req, _res, next) => {
 // ─── Routes ──────────────────────────────────────────────────────
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRouter);
+app.use('/api/public', publicRouter);
 app.use('/api/crm', generalLimiter, crmRouter);
 app.use('/api/ai', aiLimiter, aiRouter);
 app.use('/api/users', generalLimiter, usersRouter);

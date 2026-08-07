@@ -289,7 +289,22 @@ Company (บริษัท)
 - Company ที่ Lead สามารถ override ได้ (กรณี deal กับบริษัทอื่น)
 - เปลี่ยน Company ที่ Contact → Lead ที่ผูกอยู่จะ sync ตาม
 
-### 6.5 Keyboard Shortcuts
+### 6.5 Public Website Lead Capture (ระบบรับข้อมูลลูกค้าจากหน้าเว็บ)
+
+ระบบมีหน้าเว็บสาธารณะและแบบฟอร์มสำหรับรับข้อมูลลูกค้า (Lead Capture):
+- **Landing Page (`/`)**: หน้าแนะนำผลิตภัณฑ์/บริการสำหรับผู้เข้าชมทั่วไป
+- **Inquiry Form (`/inquiry`)**: แบบฟอร์มกรอกข้อมูลความสนใจสำหรับลูกค้า
+
+**กระบวนการทำงานแบบอัตโนมัติ:**
+1. เมื่อผู้เข้าชมกรอกฟอร์มที่ `/inquiry` ระบบจะสร้าง `Company` (หากระบุชื่อบริษัท), `Contact`, และ `Lead` ใน **Transaction เดียวกัน**
+2. Lead ที่สร้างใหม่จะมี `Source = WEBSITE` และถูกจัดเข้า Stage **`NEW`** ทันที เพื่อให้ทีม Sales ตรวจสอบ
+3. ระบบจะ assign Lead ให้อัตโนมัติ:
+   - หากตั้งค่า `WEBSITE_LEAD_OWNER_EMAIL` ระบบจะ assign ให้ผู้ใช้นั้น
+   - หากไม่ได้ตั้งค่าหรือผู้ใช้ inactive ระบบจะเลือกผู้ใช้บทบาท `SALES` คนแรกที่ active (fallback ไป `MANAGER` / `ADMIN`)
+4. บันทึกประวัติลง Activity Timeline ของ Lead และ Audit Log ของระบบโดยอัตโนมัติ
+5. มีระบบความปลอดภัย: Rate limit (5 submissions / 15 นาที / IP) และ Honeypot field เพื่อป้องกัน Bot
+
+### 6.6 Keyboard Shortcuts
 
 | ปุ่มลัด | ทำอะไร |
 |---------|--------|

@@ -32,6 +32,7 @@ cp backend/.env.example backend/.env
 
 # Frontend: set NEXT_PUBLIC_API_URL (for example, http://localhost:4000)
 # Backend: set DATABASE_URL, JWT_SECRET, FRONTEND_URL, TRUST_PROXY_HOPS, and provider credentials
+# Optional: set WEBSITE_LEAD_OWNER_EMAIL to an active CRM user who should receive website leads
 ```
 
 ### 3. Database Setup
@@ -128,12 +129,15 @@ automatic exports but does not unset variables that were already exported.
 ```mermaid
 graph TB
     subgraph "Client Layer"
-        Browser["🌐 Browser<br/>React + Tailwind"]
+        Browser["🌐 CRM User<br/>React + Tailwind"]
+        Visitor["🌐 Public Visitor<br/>Landing & Form"]
         LINEAPP["💬 LINE App<br/>End User"]
     end
 
     subgraph "Local Application"
         subgraph "Frontend - App Router"
+            Landing["Landing Page /"]
+            Inquiry["Inquiry Form /inquiry"]
             Login["Login Page"]
             Dashboard["Dashboard"]
             Leads["Leads List"]
@@ -143,6 +147,7 @@ graph TB
         end
 
         subgraph "API Routes"
+            PUBLIC_API["/api/public/*<br/>Public Lead Capture"]
             CRM_API["/api/crm/*<br/>CRUD + Search"]
             AI_API["/api/ai/*<br/>Summary | Score | Action | Reply"]
             LINE_API["/api/line/*<br/>Webhook | Reply"]
@@ -151,6 +156,7 @@ graph TB
 
         subgraph "Service Layer"
             CRM_SVC["CRM Service<br/>Business Logic"]
+            PUBLIC_SVC["Public Lead Service<br/>Lead Capture & Assignment"]
             AI_SVC["AI Service<br/>OpenAI + Fallback"]
             LINE_SVC["LINE Service<br/>Real / Mock Adapter"]
         end
@@ -166,16 +172,20 @@ graph TB
         Prisma["Prisma ORM"]
     end
 
+    Visitor --> Landing & Inquiry
+    Inquiry --> PUBLIC_API
     Browser --> Login & Dashboard & Leads & LeadDetail & Contacts & Companies
     Login --> AUTH_API
     Dashboard & Leads & LeadDetail & Contacts & Companies --> CRM_API
     LeadDetail --> AI_API
     LINEAPP --> LINE_MSG --> LINE_API
 
+    PUBLIC_API --> PUBLIC_SVC
     CRM_API --> CRM_SVC
     AI_API --> AI_SVC
     LINE_API --> LINE_SVC
 
+    PUBLIC_SVC --> Prisma
     CRM_SVC --> Prisma
     AI_SVC --> OpenAI
     AI_SVC -.->|fallback| CRM_SVC
@@ -327,6 +337,19 @@ Do not set a non-zero value when Express is directly internet-facing: clients co
 | PUT | `/api/crm/tasks/:id` | Update task (status, title, etc.) |
 | DELETE | `/api/crm/tasks/:id` | Delete task |
 
+### Public Website Lead Capture
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/public/leads` | No | Validate an inquiry and create Contact, Company (when supplied), and a `NEW`/`WEBSITE` Lead in a single transaction |
+
+**Features & Workflow:**
+- **Public Entry Points**: `/` serves as the public landing page and `/inquiry` provides the customer lead capture form.
+- **Immediate Lead Creation**: Creates `Company`, `Contact`, and `Lead` in a single database transaction. Lead stage is automatically set to `NEW` and source to `WEBSITE` for team review.
+- **Smart Owner Assignment**: Assigns the lead to `WEBSITE_LEAD_OWNER_EMAIL`. If unset or inactive, assigns to the oldest active `SALES` user, falling back to active `MANAGER`/`ADMIN`.
+- **Activity & Audit Trail**: Automatically logs the creation in the Lead Activity timeline and system Audit Log (`LEAD`, `CREATE`).
+- **Security & Bot Protection**: Rate-limited to 5 submissions / 15 minutes / IP with a honeypot field. Public clients cannot set `ownerId`, `stage`, or `source`.
+
 ### AI (`/api/ai`) — All require auth
 
 | Method | Path | Body | Description |
@@ -393,6 +416,7 @@ npm run test:watch
 - `tests/crm.test.ts` — Core CRM CRUD, stage transitions, search
 - `tests/ai-skill.test.ts` — AI behaviors, fallback when API unavailable
 - `tests/line-webhook.test.ts` — Webhook signature verification, idempotency
+- `tests/public-lead.test.ts` — Public website lead capture (rate limiting, single transaction, owner assignment, honeypot)
 
 ---
 
