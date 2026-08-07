@@ -100,7 +100,7 @@ graph TB
         LINEAPP["💬 LINE App<br/>End User"]
     end
 
-    subgraph "Next.js Application (Vercel)"
+    subgraph "Local Application"
         subgraph "Frontend - App Router"
             Login["Login Page"]
             Dashboard["Dashboard"]
@@ -399,22 +399,26 @@ See [`skills/crm-copilot/SKILL.md`](skills/crm-copilot/SKILL.md) for the full sk
 
 ---
 
-## 📦 Deployment
+## 📦 Local Setup
 
-### Vercel + Supabase
+### Run the application
+
+The application currently runs locally as two processes. PostgreSQL may be
+local or hosted, depending on the `DATABASE_URL` value.
+
 ```bash
-# 1. Create Supabase project (free tier)
-# 2. Copy DATABASE_URL from Supabase dashboard
+# Terminal 1: start the Next.js frontend
+npm run dev
 
-# 3. Deploy to Vercel
-npx vercel
-
-# 4. Set environment variables in Vercel dashboard
-# 5. Run migrations
-npx vercel env pull .env.local
-npm run db:push
-npm run db:seed
+# Terminal 2: start the Express backend
+cd backend
+npm run dev
 ```
+
+Open `http://localhost:3000`; the backend API runs at
+`http://localhost:4000`. Copy the root and backend `.env.example` files before
+starting, then apply migrations and seed synthetic data as described in
+[Quick Start](#-quick-start).
 
 ---
 

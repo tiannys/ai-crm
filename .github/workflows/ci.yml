@@ -30,7 +30,9 @@ jobs:
 
       - name: Lint check (TypeScript)
         run: npx tsc --noEmit --pretty
-        continue-on-error: true
+
+      - name: Build backend
+        run: npm --prefix backend run build
 
       - name: Run unit tests
         run: npx vitest run
