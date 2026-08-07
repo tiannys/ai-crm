@@ -84,3 +84,27 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   });
   return res.json();
 }
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await apiFetch(path, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Delete failed' }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get current user's role from the stored JWT payload.
+ * Returns null if not authenticated.
+ */
+export function getCurrentUserRole(): string | null {
+  const token = getAuthToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role || null;
+  } catch {
+    return null;
+  }
+}

@@ -7,7 +7,7 @@ import {
   Building2, User, X, Target, LayoutGrid, List, Trash2, Edit3, Users,
 } from 'lucide-react';
 import { formatCurrency, formatDate, getStageColor, getSourceIcon } from '@/lib/utils';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getCurrentUserRole } from '@/lib/api';
 import KanbanBoard from '@/components/KanbanBoard';
 import LeadFormModal from '@/components/modals/LeadFormModal';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
@@ -285,9 +285,11 @@ export default function LeadsPage() {
                           <button onClick={() => setEditLeadId(lead.id)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-all" title="Edit">
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => setDeleteLeadId(lead.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all" title="Delete">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {getCurrentUserRole() === 'ADMIN' && (
+                            <button onClick={() => setDeleteLeadId(lead.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

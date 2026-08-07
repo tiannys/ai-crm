@@ -6,6 +6,7 @@ import { authRouter } from './routes/auth';
 import { crmRouter } from './routes/crm';
 import { aiRouter } from './routes/ai';
 import { lineRouter } from './routes/line';
+import { usersRouter } from './routes/users';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -44,6 +45,7 @@ app.use((req, _res, next) => {
 app.use('/api/auth', authRouter);
 app.use('/api/crm', crmRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/users', usersRouter);
 
 // ─── Health Check ────────────────────────────────────────────────
 app.get('/health', (_req, res) => {

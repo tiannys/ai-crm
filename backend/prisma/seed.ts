@@ -45,6 +45,14 @@ async function main() {
     }),
     prisma.user.create({
       data: {
+        email: 'seed-manager@example.invalid',
+        name: 'Kanokwan Manager',
+        passwordHash,
+        role: 'MANAGER',
+      },
+    }),
+    prisma.user.create({
+      data: {
         email: 'seed-user@example.invalid',
         name: 'Demo User',
         passwordHash,

@@ -284,7 +284,10 @@ export async function createActivity(data: Prisma.ActivityCreateInput) {
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────
-export async function getDashboardStats() {
+export async function getDashboardStats(ownerId?: string) {
+  // When ownerId is provided (SALES role), scope all stats to their leads only
+  const leadFilter = ownerId ? { ownerId } : {};
+
   const [
     totalLeads,
     totalContacts,
@@ -294,26 +297,28 @@ export async function getDashboardStats() {
     pipelineValueResult,
     wonDeals,
   ] = await Promise.all([
-    prisma.lead.count(),
+    prisma.lead.count({ where: leadFilter }),
     prisma.contact.count(),
     prisma.company.count(),
     prisma.lead.groupBy({
       by: ['stage'],
+      where: leadFilter,
       _count: { id: true },
     }),
     prisma.activity.findMany({
       take: 10,
       orderBy: { createdAt: 'desc' },
+      ...(ownerId ? { where: { lead: { ownerId } } } : {}),
       include: {
         user: { select: { id: true, name: true } },
         lead: { select: { id: true, title: true } },
       },
     }),
     prisma.lead.aggregate({
-      where: { stage: { notIn: ['LOST'] } },
+      where: { stage: { notIn: ['LOST'] }, ...leadFilter },
       _sum: { value: true },
     }),
-    prisma.lead.count({ where: { stage: 'WON' } }),
+    prisma.lead.count({ where: { stage: 'WON', ...leadFilter } }),
   ]);
 
   const stageBreakdown: Record<string, number> = {};

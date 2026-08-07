@@ -15,11 +15,12 @@ import {
   ChevronRight,
   Search,
   Command,
+  Shield,
 } from 'lucide-react';
 import { getAuthToken, clearAuthToken, apiGet } from '@/lib/api';
 import GlobalSearch from '@/components/GlobalSearch';
 
-const navItems = [
+const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/leads', label: 'Leads', icon: Target },
   { href: '/dashboard/contacts', label: 'Contacts', icon: Users },
@@ -115,7 +116,10 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {[
+            ...baseNavItems,
+            ...(user.role === 'ADMIN' ? [{ href: '/dashboard/users', label: 'Users', icon: Shield }] : []),
+          ].map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             return (
@@ -144,7 +148,14 @@ export default function DashboardLayout({
               {user.name?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                  user.role === 'ADMIN' ? 'bg-red-500/20 text-red-400' :
+                  user.role === 'MANAGER' ? 'bg-amber-500/20 text-amber-400' :
+                  'bg-blue-500/20 text-blue-400'
+                }`}>{user.role}</span>
+              </div>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
             </div>
             <button

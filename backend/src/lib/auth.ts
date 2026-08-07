@@ -11,6 +11,7 @@ export interface AuthPayload {
   email: string;
   name: string;
   role: string;
+  isActive: boolean;
 }
 
 export function generateToken(user: AuthPayload): string {
@@ -29,6 +30,9 @@ export async function authenticateUser(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return null;
 
+  // Check if user is disabled
+  if (!user.isActive) return null;
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
 
@@ -37,10 +41,11 @@ export async function authenticateUser(email: string, password: string) {
     email: user.email,
     name: user.name,
     role: user.role,
+    isActive: user.isActive,
   };
 }
 
-// Express middleware
+// Express middleware — verifies JWT token
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -57,4 +62,26 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
   (req as Request & { user: AuthPayload }).user = payload;
   next();
+}
+
+/**
+ * Role-based access control middleware.
+ * Usage: requireRole('ADMIN') or requireRole('ADMIN', 'MANAGER')
+ * Must be placed AFTER authMiddleware.
+ */
+export function requireRole(...allowedRoles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = (req as Request & { user: AuthPayload }).user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!allowedRoles.includes(user.role)) {
+      res.status(403).json({ error: 'Forbidden — insufficient permissions' });
+      return;
+    }
+
+    next();
+  };
 }

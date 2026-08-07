@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { prisma } from '../lib/prisma';
-import { authMiddleware, AuthPayload } from '../lib/auth';
+import { authMiddleware, requireRole, AuthPayload } from '../lib/auth';
 import {
   getLeads, getLeadById, createLead, updateLead,
   getContacts, createContact,
@@ -44,7 +44,10 @@ crmRouter.use(authMiddleware);
 // ─── Dashboard ───────────────────────────────────────────────────
 crmRouter.get('/dashboard', async (req, res) => {
   try {
-    const stats = await getDashboardStats();
+    const user = (req as AuthRequest).user;
+    // SALES sees only own leads in dashboard; ADMIN/MANAGER sees all
+    const ownerId = user.role === 'SALES' ? user.id : undefined;
+    const stats = await getDashboardStats(ownerId);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch dashboard' });
@@ -54,14 +57,21 @@ crmRouter.get('/dashboard', async (req, res) => {
 // ─── Leads ───────────────────────────────────────────────────────
 crmRouter.get('/leads', async (req, res) => {
   try {
+    const user = (req as AuthRequest).user;
     const { search, stage, source, page, limit, companyId, contactId, ownerId } = req.query;
+
+    // SALES users can only see their own leads
+    const effectiveOwnerId = user.role === 'SALES'
+      ? user.id
+      : (ownerId as string) || undefined;
+
     const result = await getLeads({
       search: search as string,
       stage: stage as any,
       source: source as string,
       companyId: companyId as string,
       contactId: contactId as string,
-      ownerId: ownerId as string,
+      ownerId: effectiveOwnerId,
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
     });
@@ -73,8 +83,16 @@ crmRouter.get('/leads', async (req, res) => {
 
 crmRouter.get('/leads/:id', async (req, res) => {
   try {
+    const user = (req as AuthRequest).user;
     const lead = await getLeadById(req.params.id);
     if (!lead) { res.status(404).json({ error: 'Lead not found' }); return; }
+
+    // SALES can only view their own leads
+    if (user.role === 'SALES' && lead.owner.id !== user.id) {
+      res.status(403).json({ error: 'Forbidden — you can only view your own leads' });
+      return;
+    }
+
     res.json(lead);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch lead' });
@@ -360,7 +378,7 @@ crmRouter.put('/companies/:id', async (req, res) => {
 });
 
 // ─── Delete Endpoints ────────────────────────────────────────────
-crmRouter.delete('/leads/:id', async (req, res) => {
+crmRouter.delete('/leads/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.lead.delete({ where: { id: req.params.id } });
     res.json({ success: true });
@@ -373,7 +391,7 @@ crmRouter.delete('/leads/:id', async (req, res) => {
   }
 });
 
-crmRouter.delete('/contacts/:id', async (req, res) => {
+crmRouter.delete('/contacts/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.contact.delete({ where: { id: req.params.id } });
     res.json({ success: true });
@@ -386,7 +404,7 @@ crmRouter.delete('/contacts/:id', async (req, res) => {
   }
 });
 
-crmRouter.delete('/companies/:id', async (req, res) => {
+crmRouter.delete('/companies/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.company.delete({ where: { id: req.params.id } });
     res.json({ success: true });

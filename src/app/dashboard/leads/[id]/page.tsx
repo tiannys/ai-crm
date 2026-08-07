@@ -9,7 +9,7 @@ import {
   Plus, Trash2, CheckSquare, Square, ListFilter, Paperclip, Upload, Download, FileText,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { apiFetch, getAuthToken } from '@/lib/api';
+import { apiFetch, getAuthToken, getCurrentUserRole } from '@/lib/api';
 import LeadFormModal from '@/components/modals/LeadFormModal';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
 
@@ -309,9 +309,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <button onClick={() => setShowEdit(true)} className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-all" title="Edit Lead">
             <Edit3 className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowDelete(true)} className="p-2 rounded-xl hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all" title="Delete Lead">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {getCurrentUserRole() === 'ADMIN' && (
+            <button onClick={() => setShowDelete(true)} className="p-2 rounded-xl hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all" title="Delete Lead">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

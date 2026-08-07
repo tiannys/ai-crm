@@ -32,7 +32,10 @@ cp .env.example .env.local
 
 ### 3. Database Setup
 ```bash
-# Push schema to database
+# Option A: Apply versioned migrations (recommended for production)
+npx prisma migrate deploy
+
+# Option B: Push schema directly (quick setup for development)
 npm run db:push
 
 # Seed with synthetic data
@@ -45,13 +48,17 @@ npm run dev
 # Open http://localhost:3000
 ```
 
-### Credentials removed
-| Email | Password | Role |
-|-------|----------|------|
-| seed-admin@example.invalid | [removed] | Admin |
-| seed-sales-1@example.invalid | [removed] | Sales |
-| seed-sales-2@example.invalid | [removed] | Sales |
-| seed-user@example.invalid | [removed] | Demo |
+### RBAC Permission Matrix
+| Action | Admin | Manager | Sales |
+|--------|-------|---------|-------|
+| View all leads | ✅ | ✅ | ❌ own only |
+| Create lead | ✅ | ✅ | ✅ |
+| Edit lead | ✅ | ✅ | ✅ own only |
+| Delete lead/contact/company | ✅ | ❌ | ❌ |
+| Manage users (create/disable/delete) | ✅ | ❌ | ❌ |
+| Dashboard (all data) | ✅ | ✅ | ❌ own leads only |
+| AI copilot | ✅ | ✅ | ✅ |
+| LINE integration | ✅ | ✅ | ✅ |
 
 ---
 
@@ -206,6 +213,95 @@ sequenceDiagram
 3. **LINE reply requires approval** — draft → approve → send flow with audit trail
 4. **Idempotent webhook processing** — LineEvent table prevents duplicate processing
 5. **Graceful AI fallback** — rule-based heuristics when OpenAI is unavailable
+
+---
+
+## 📡 API Reference
+
+Backend runs on `http://localhost:4000`. All `/api/crm/*` and `/api/ai/*` routes require `Authorization: Bearer <token>`.
+
+### Auth (`/api/auth`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/login` | No | Login with email/password → returns JWT token |
+| GET | `/api/auth/me` | Yes | Get current user info from token |
+
+### CRM (`/api/crm`) — All require auth
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/crm/dashboard` | Dashboard stats (counts, pipeline, recent activity) |
+| GET | `/api/crm/search?q=` | Global search across leads, contacts, companies |
+| **Leads** | | |
+| GET | `/api/crm/leads?page=&stage=&source=&search=` | List leads with pagination + filters |
+| GET | `/api/crm/leads/:id` | Lead detail with relations (company, contact, activities, messages) |
+| POST | `/api/crm/leads` | Create lead `{ title, ownerId, companyId?, contactId?, value?, source? }` |
+| PUT | `/api/crm/leads/:id` | Update lead fields (including stage transitions) |
+| DELETE | `/api/crm/leads/:id` | Delete lead (cascades activities/attachments) |
+| GET | `/api/crm/leads/:id/activities` | List activities for a lead |
+| POST | `/api/crm/leads/:id/activities` | Add activity `{ type, description }` |
+| GET | `/api/crm/leads/:id/messages` | List messages for a lead |
+| GET | `/api/crm/leads/:id/attachments` | List attachments for a lead |
+| POST | `/api/crm/leads/:id/attachments` | Upload file (multipart, 20MB max) |
+| GET | `/api/crm/attachments/:id/download` | Download attachment file |
+| DELETE | `/api/crm/attachments/:id` | Delete attachment |
+| **Contacts** | | |
+| GET | `/api/crm/contacts?page=&search=` | List contacts with pagination |
+| GET | `/api/crm/contacts/:id` | Contact detail with company, leads, messages |
+| POST | `/api/crm/contacts` | Create contact `{ firstName, lastName, email?, phone?, companyId? }` |
+| PUT | `/api/crm/contacts/:id` | Update contact fields |
+| DELETE | `/api/crm/contacts/:id` | Delete contact |
+| GET | `/api/crm/contacts/:id/messages` | List messages for a contact |
+| POST | `/api/crm/contacts/:id/create-lead` | Create lead directly from contact |
+| **Companies** | | |
+| GET | `/api/crm/companies?page=&search=` | List companies with pagination |
+| GET | `/api/crm/companies/:id` | Company detail with contacts, leads |
+| POST | `/api/crm/companies` | Create company `{ name, industry?, website? }` |
+| PUT | `/api/crm/companies/:id` | Update company fields |
+| DELETE | `/api/crm/companies/:id` | Delete company |
+| **Tasks** | | |
+| GET | `/api/crm/tasks?leadId=&status=` | List tasks with filters |
+| POST | `/api/crm/tasks` | Create task `{ title, leadId?, assigneeId, priority?, dueDate? }` |
+| PUT | `/api/crm/tasks/:id` | Update task (status, title, etc.) |
+| DELETE | `/api/crm/tasks/:id` | Delete task |
+
+### AI (`/api/ai`) — All require auth
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| POST | `/api/ai/summarize` | `{ leadId }` | Generate AI lead summary (with fallback) |
+| POST | `/api/ai/score` | `{ leadId }` | Generate qualification score 0-100 (with fallback) |
+| POST | `/api/ai/next-action` | `{ leadId }` | Suggest next best action (with fallback) |
+| POST | `/api/ai/draft-reply` | `{ leadId }` | Generate draft LINE reply (with fallback) |
+
+### LINE (`/api/line`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/line/webhook` | LINE signature | Receive LINE webhook events (HMAC-SHA256 verified) |
+| GET | `/api/line/webhook` | No | Health check for LINE webhook |
+| POST | `/api/line/draft` | Yes | Create outbound draft message for a lead |
+| POST | `/api/line/reply` | Yes | Approve/edit/reject a draft message `{ messageId, action }` |
+| POST | `/api/line/push` | Yes | Push message directly to a LINE contact |
+
+### Users (`/api/users`) — ADMIN only
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/users` | List all users with stats |
+| POST | `/api/users` | Create user `{ email, name, password, role? }` |
+| PUT | `/api/users/:id` | Update user name/role/password |
+| PUT | `/api/users/:id/toggle-active` | Enable/disable user (cannot self-disable) |
+| DELETE | `/api/users/:id` | Delete user (cannot self-delete, must reassign leads first) |
+
+### Common Response Formats
+
+**Success**: `{ data: ..., total?, page?, totalPages? }`
+
+**Error**: `{ error: "message" }` with appropriate HTTP status code
+
+**AI Response**: `{ success: true, data: { ... }, fallback?: true }` — `fallback: true` indicates heuristic response
 
 ---
 
