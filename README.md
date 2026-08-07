@@ -19,7 +19,7 @@ An AI-powered CRM system for sales teams with LINE OA integration, built as a te
 
 ### 1. Clone & Install
 ```bash
-git clone <repository-url>
+git clone https://github.com/tiannys/ai-crm-mvp.git
 cd ai-crm-mvp
 npm install
 cd backend && npm install && cd ..

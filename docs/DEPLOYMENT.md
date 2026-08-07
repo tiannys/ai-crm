@@ -82,8 +82,8 @@
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/tiannys/ai-crm.git
-cd ai-crm
+git clone https://github.com/tiannys/ai-crm-mvp.git
+cd ai-crm-mvp
 ```
 
 ### Step 2: Start PostgreSQL
