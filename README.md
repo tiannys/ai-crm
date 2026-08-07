@@ -36,20 +36,30 @@ cp backend/.env.example backend/.env
 
 ### 3. Database Setup
 ```bash
-# Option A: Apply versioned migrations on the production/Linux server
-# Prisma migrations are stored at the project root, while DATABASE_URL is in backend/.env.
 cd /opt/ai-crm-mvp
-set -a
-source backend/.env
-set +a
-npx prisma migrate deploy
 
-# Option B: Push schema directly (quick setup for development)
-npm run db:push
+# Start PostgreSQL first when using the included Docker Compose service.
+# Skip this step when DATABASE_URL points to an existing PostgreSQL server.
+docker compose up -d db
+docker compose ps db
 
-# Seed with synthetic data
-# Set SEED_PASSWORD (minimum 12 characters) in your environment first; never commit it.
-npm run db:seed
+# Prisma migrations are stored at the project root, while DATABASE_URL is in
+# backend/.env. Use a subshell so backend variables such as NODE_ENV do not
+# remain exported in the shell used to build the frontend.
+(
+  set -a
+  source backend/.env
+  set +a
+
+  # Recommended: apply versioned migrations
+  npx prisma migrate deploy
+
+  # Development alternative (use instead of migrate deploy): npm run db:push
+
+  # Optional: seed synthetic data. Set SEED_PASSWORD (minimum 12 characters)
+  # in backend/.env first; never commit it.
+  # npm run db:seed
+)
 ```
 
 ### 4. Run Development Servers
@@ -63,6 +73,23 @@ cd backend
 npm run dev
 # API runs at http://localhost:4000 and loads backend/.env automatically
 ```
+
+### 5. Production Build on Linux
+
+Do not export `NODE_ENV=development` from `backend/.env` into the shell used to
+build Next.js. On a production server, set `NODE_ENV="production"` in
+`backend/.env` and run:
+
+```bash
+cd /opt/ai-crm-mvp
+unset NODE_ENV
+NODE_ENV=production npm run build
+npm --prefix backend run build
+```
+
+If backend variables are needed for a one-off command, load them inside a
+subshell as shown in [Database Setup](#3-database-setup). `set +a` stops future
+automatic exports but does not unset variables that were already exported.
 
 ### RBAC Permission Matrix
 | Action | Admin | Manager | Sales |
@@ -393,7 +420,7 @@ See [`skills/crm-copilot/SKILL.md`](skills/crm-copilot/SKILL.md) for the full sk
 1. Create a LINE Official Account at https://developers.line.biz
 2. Enable Messaging API
 3. Set webhook URL: `https://your-domain.com/api/line/webhook`
-4. Copy Channel ID, Secret, and Access Token to `.env.local`
+4. Copy Channel ID, Secret, and Access Token to `backend/.env`
 
 ### Features
 - Webhook signature verification (HMAC-SHA256)
@@ -466,7 +493,7 @@ The CRM runs with `LINE_USE_MOCK=true` by default. The mock adapter:
 ### With Real LINE OA Account
 1. Create a LINE Official Account at [developers.line.biz](https://developers.line.biz)
 2. Enable **Messaging API** in the channel settings
-3. Copy credentials to `.env.local`:
+3. Copy credentials to `backend/.env`:
    ```
    LINE_CHANNEL_ID=<your-channel-id>
    LINE_CHANNEL_SECRET=<your-channel-secret>
