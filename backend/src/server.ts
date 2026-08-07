@@ -37,6 +37,11 @@ const generalLimiter = rateLimit({
 });
 
 const app = express();
+const configuredProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? '0');
+const trustProxyHops = Number.isInteger(configuredProxyHops) && configuredProxyHops >= 0
+  ? configuredProxyHops
+  : 0;
+app.set('trust proxy', trustProxyHops);
 const PORT = process.env.PORT || 4000;
 
 // ─── Middleware ───────────────────────────────────────────────────
@@ -91,7 +96,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // ─── Start ───────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  logger.info({ port: PORT, env: process.env.NODE_ENV }, '🚀 AI CRM Backend running');
+  logger.info({ port: PORT, env: process.env.NODE_ENV, trustProxyHops }, '🚀 AI CRM Backend running');
   logger.info({ frontend: process.env.FRONTEND_URL }, 'CORS allowed origin');
 });
 

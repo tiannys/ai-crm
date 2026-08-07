@@ -31,7 +31,7 @@ cp .env.example .env.local
 cp backend/.env.example backend/.env
 
 # Frontend: set NEXT_PUBLIC_API_URL (for example, http://localhost:4000)
-# Backend: set DATABASE_URL, JWT_SECRET, FRONTEND_URL, and provider credentials
+# Backend: set DATABASE_URL, JWT_SECRET, FRONTEND_URL, TRUST_PROXY_HOPS, and provider credentials
 ```
 
 ### 3. Database Setup
@@ -235,6 +235,18 @@ sequenceDiagram
 Backend runs on `http://localhost:4000`. All `/api/crm/*` and `/api/ai/*` routes require `Authorization: Bearer <token>`.
 
 Login attempts are rate-limited independently. Authenticated `/api/auth/me` and `/api/auth/logout` requests do not consume the login-attempt quota.
+
+### Reverse Proxy Configuration
+
+`TRUST_PROXY_HOPS` must match the production network path so Express and the rate limiter derive the correct client IP. The secure default is `0`.
+
+| Deployment path | Value |
+|-----------------|-------|
+| Client → Express directly | `TRUST_PROXY_HOPS=0` |
+| Client → Nginx or Cloudflare Tunnel → Express | `TRUST_PROXY_HOPS=1` |
+| Client → CDN → load balancer → Express | Set the exact verified proxy-hop count |
+
+Do not set a non-zero value when Express is directly internet-facing: clients could spoof forwarded IP headers and bypass per-IP rate limits. If production has routes with different proxy-chain lengths, configure trusted proxy IP ranges instead of a numeric hop count.
 
 ### Auth (`/api/auth`)
 
