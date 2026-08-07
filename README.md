@@ -36,7 +36,12 @@ cp backend/.env.example backend/.env
 
 ### 3. Database Setup
 ```bash
-# Option A: Apply versioned migrations from the project root (recommended for production)
+# Option A: Apply versioned migrations on the production/Linux server
+# Prisma migrations are stored at the project root, while DATABASE_URL is in backend/.env.
+cd /opt/ai-crm-mvp
+set -a
+source backend/.env
+set +a
 npx prisma migrate deploy
 
 # Option B: Push schema directly (quick setup for development)
