@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SALES
+}
+
+enum LeadStage {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  MANUAL
+  LINE
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  STAGE_CHANGE
+  LINE_MESSAGE
+  AI_ACTION
+  TASK_CREATED
+  TASK_COMPLETED
+  FILE_ATTACHED
+}
+
+enum MessageChannel {
+  LINE
+  EMAIL
+  MANUAL
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  RECEIVED
+  DRAFT
+  APPROVED
+  SENT
+  FAILED
+}
+
+enum ProcessingStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  name         String
+  passwordHash String     @map("password_hash")
+  role         UserRole   @default(SALES)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  leads        Lead[]     @relation("LeadOwner")
+  activities   Activity[]
+  tasks        Task[]     @relation("TaskAssignee")
+
+  @@map("users")
+}
+
+model Company {
+  id        String    @id @default(uuid())
+  name      String
+  industry  String?
+  website   String?
+  phone     String?
+  address   String?
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  contacts  Contact[]
+  leads     Lead[]
+
+  @@map("companies")
+}
+
+model Contact {
+  id              String    @id @default(uuid())
+  companyId       String?   @map("company_id")
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  email           String?
+  phone           String?
+  lineUserId      String?   @unique @map("line_user_id")
+  lineDisplayName String?   @map("line_display_name")
+  position        String?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company         Company?  @relation(fields: [companyId], references: [id])
+  leads           Lead[]
+  messages        Message[]
+
+  @@map("contacts")
+}
+
+model Lead {
+  id             String    @id @default(uuid())
+  companyId      String?   @map("company_id")
+  contactId      String?   @map("contact_id")
+  ownerId        String    @map("owner_id")
+  title          String
+  stage          LeadStage @default(NEW)
+  value          Decimal?  @db.Decimal(12, 2)
+  source         LeadSource @default(MANUAL)
+  aiScore        Int?      @map("ai_score")
+  aiScoreReasons String?   @map("ai_score_reasons") @db.Text
+  aiSummary      String?   @map("ai_summary") @db.Text
+  expectedClose  DateTime? @map("expected_close")
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  company        Company?     @relation(fields: [companyId], references: [id])
+  contact        Contact?     @relation(fields: [contactId], references: [id])
+  owner          User         @relation("LeadOwner", fields: [ownerId], references: [id])
+  activities     Activity[]
+  messages       Message[]
+  tasks          Task[]
+  attachments    Attachment[]
+
+  @@map("leads")
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  userId      String       @map("user_id")
+  type        ActivityType
+  description String       @db.Text
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@map("activities")
+}
+
+model Message {
+  id            String           @id @default(uuid())
+  leadId        String?          @map("lead_id")
+  contactId     String           @map("contact_id")
+  channel       MessageChannel
+  direction     MessageDirection
+  content       String           @db.Text
+  lineMessageId String?          @unique @map("line_message_id")
+  status        MessageStatus    @default(RECEIVED)
+  approvedBy    String?          @map("approved_by")
+  approvedAt    DateTime?        @map("approved_at")
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  lead          Lead?            @relation(fields: [leadId], references: [id])
+  contact       Contact          @relation(fields: [contactId], references: [id])
+
+  @@map("messages")
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  leadId      String?      @map("lead_id")
+  assigneeId  String       @map("assignee_id")
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?    @map("due_date")
+  completedAt DateTime?    @map("completed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  assignee    User         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@map("tasks")
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  leadId      String   @map("lead_id")
+  uploadedBy  String   @map("uploaded_by")
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type")       // MIME type
+  fileSize    Int      @map("file_size")        // bytes
+  filePath    String   @map("file_path")        // local path or URL
+  category    String?                            // quotation, sow, tor, contract, invoice, other
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model LineEvent {
+  id               String           @id @default(uuid())
+  lineEventId      String           @unique @map("line_event_id")
+  lineUserId       String           @map("line_user_id")
+  eventType        String           @map("event_type")
+  rawPayload       Json             @map("raw_payload")
+  processingStatus ProcessingStatus @default(RECEIVED) @map("processing_status")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  processedAt      DateTime?        @map("processed_at")
+
+  @@map("line_events")
+}
+
