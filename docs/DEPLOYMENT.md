@@ -185,7 +185,7 @@ npm run db:seed
 ```
 
 ระบบจะสร้าง:
-- **Admin user:** `seed-admin-legacy@example.invalid` / `[removed]`
+- **Sample users:** passwords are set from the required `SEED_PASSWORD` environment variable
 - **Sample contacts, companies, leads** สำหรับทดสอบ
 
 ### Step 7: รัน Development Servers
@@ -207,9 +207,7 @@ npm run dev
 
 เปิด browser ไปที่ `http://localhost:3000`
 
-Login ด้วย:
-- Email: `seed-admin-legacy@example.invalid`
-- Password: `[removed]`
+Login with an account created by the seed process and the configured `SEED_PASSWORD`.
 
 ---
 

@@ -16,7 +16,11 @@ async function main() {
   await prisma.user.deleteMany();
 
   // ─── Users ───────────────────────────────────────────────────
-  const passwordHash = await bcrypt.hash(process.env.SEED_PASSWORD!, 10);
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword || seedPassword.length < 12) {
+    throw new Error('SEED_PASSWORD must be set and contain at least 12 characters');
+  }
+  const passwordHash = await bcrypt.hash(seedPassword, 10);
 
   const users = await Promise.all([
     prisma.user.create({
@@ -253,11 +257,6 @@ async function main() {
   console.log(`✅ Created ${messagesData.length} messages`);
 
   console.log('\n🎉 Seed completed successfully!');
-  console.log('\n📋 Credentials removed:');
-  console.log('   Admin:  seed-admin@example.invalid / [removed]');
-  console.log('   Sales:  seed-sales-1@example.invalid / [removed]');
-  console.log('   Sales:  seed-sales-2@example.invalid / [removed]');
-  console.log('   Demo:   seed-user@example.invalid / [removed]');
 }
 
 main()

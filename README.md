@@ -43,6 +43,7 @@ npx prisma migrate deploy
 npm run db:push
 
 # Seed with synthetic data
+# Set SEED_PASSWORD (minimum 12 characters) in your environment first; never commit it.
 npm run db:seed
 ```
 

@@ -7,8 +7,8 @@ import { apiPost, setAuthToken, getAuthToken } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('seed-user@example.invalid');
-  const [password, setPassword] = useState('[removed]');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -126,6 +126,7 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
+
       </div>
     </div>
   );
