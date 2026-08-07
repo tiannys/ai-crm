@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, requireRole, AuthPayload } from '../lib/auth';
+import { createChildLogger } from '../lib/logger';
 import { auditFromRequest } from '../services/audit.service';
 import {
   getLeads, getLeadById, createLead, updateLead,
@@ -13,13 +14,26 @@ import {
 } from '../services/crm.service';
 
 export const crmRouter = Router();
+const log = createChildLogger('crm-routes');
 
 // Auth request type
 type AuthRequest = Request & { user: AuthPayload };
 
 // File upload config
-const uploadsDir = path.join(__dirname, '../../uploads');
+const uploadsDir = path.resolve(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+function attachmentContentDisposition(fileName: string): string {
+  const fallbackName = fileName
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7E]/g, '_')
+    .replace(/["\\]/g, '_') || 'download';
+  const encodedName = encodeURIComponent(fileName).replace(/[!'()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+
+  return `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`;
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -706,14 +720,31 @@ crmRouter.get('/attachments/:id/download', async (req, res) => {
     const attachment = await prisma.attachment.findUnique({ where: { id: req.params.id } });
     if (!attachment) { res.status(404).json({ error: 'Attachment not found' }); return; }
 
-    const filePath = path.join(uploadsDir, attachment.filePath);
+    const filePath = path.resolve(uploadsDir, path.basename(attachment.filePath));
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: 'File not found on disk' }); return; }
 
-    res.setHeader('Content-Disposition', `attachment; filename="${attachment.fileName}"`);
+    const fileStat = fs.statSync(filePath);
+    res.setHeader('Content-Disposition', attachmentContentDisposition(attachment.fileName));
     res.setHeader('Content-Type', attachment.fileType);
-    res.sendFile(filePath);
+    res.setHeader('Content-Length', fileStat.size);
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (error) => {
+      log.error({ error, attachmentId: attachment.id }, 'Failed to stream attachment');
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download attachment' });
+      } else {
+        res.destroy(error);
+      }
+    });
+    fileStream.pipe(res);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to download attachment' });
+    log.error({ error, attachmentId: req.params.id }, 'Failed to download attachment');
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download attachment' });
+    } else {
+      res.destroy(error instanceof Error ? error : undefined);
+    }
   }
 });
 
