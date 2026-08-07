@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, requireRole, AuthPayload } from '../lib/auth';
+import { auditFromRequest } from '../services/audit.service';
 import {
   getLeads, getLeadById, createLead, updateLead,
   getContacts, createContact,
@@ -113,6 +114,7 @@ crmRouter.post('/leads', async (req, res) => {
       ...(contactId && { contact: { connect: { id: contactId } } }),
       ...(companyId && { company: { connect: { id: companyId } } }),
     });
+    auditFromRequest(req, 'CREATE', 'LEAD', lead.id, { title });
     res.status(201).json(lead);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create lead' });
@@ -182,6 +184,7 @@ crmRouter.put('/leads/:id', async (req, res) => {
       });
     }
 
+    auditFromRequest(req, 'UPDATE', 'LEAD', req.params.id, { changes: changes.length > 0 ? changes : ['minor update'] });
     res.json(lead);
   } catch (error: any) {
     if (error?.message === 'Lead not found') {
@@ -237,6 +240,7 @@ crmRouter.get('/contacts', async (req, res) => {
 crmRouter.post('/contacts', async (req, res) => {
   try {
     const contact = await createContact(req.body);
+    auditFromRequest(req, 'CREATE', 'CONTACT', contact.id, { name: `${req.body.firstName} ${req.body.lastName}` });
     res.status(201).json(contact);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create contact' });
@@ -354,6 +358,7 @@ crmRouter.get('/companies', async (req, res) => {
 crmRouter.post('/companies', async (req, res) => {
   try {
     const company = await createCompany(req.body);
+    auditFromRequest(req, 'CREATE', 'COMPANY', company.id, { name: req.body.name });
     res.status(201).json(company);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create company' });
@@ -381,6 +386,7 @@ crmRouter.put('/companies/:id', async (req, res) => {
 crmRouter.delete('/leads/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.lead.delete({ where: { id: req.params.id } });
+    auditFromRequest(req, 'DELETE', 'LEAD', req.params.id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -394,6 +400,7 @@ crmRouter.delete('/leads/:id', requireRole('ADMIN'), async (req, res) => {
 crmRouter.delete('/contacts/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.contact.delete({ where: { id: req.params.id } });
+    auditFromRequest(req, 'DELETE', 'CONTACT', req.params.id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -407,6 +414,7 @@ crmRouter.delete('/contacts/:id', requireRole('ADMIN'), async (req, res) => {
 crmRouter.delete('/companies/:id', requireRole('ADMIN'), async (req, res) => {
   try {
     await prisma.company.delete({ where: { id: req.params.id } });
+    auditFromRequest(req, 'DELETE', 'COMPANY', req.params.id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -434,6 +442,7 @@ crmRouter.put('/contacts/:id', async (req, res) => {
       });
     }
 
+    auditFromRequest(req, 'UPDATE', 'CONTACT', req.params.id);
     res.json(contact);
   } catch (error: any) {
     if (error?.code === 'P2025') {

@@ -74,6 +74,9 @@ npm run dev
 | AI | Multi-provider: OpenAI / Gemini Gateway / Heuristic Fallback |
 | LINE | LINE Messaging API (Real + Mock adapter) |
 | Auth | JWT (stateless, bcrypt password hash) |
+| Security | Rate limiting (express-rate-limit), RBAC (3 roles) |
+| Audit | Comprehensive audit log (login/logout, CRUD, exports) |
+| CI/CD | GitHub Actions (lint + test + build on every push/PR) |
 | Tunnel | Cloudflare Tunnel (ai-crm / ai-crm-api subdomains) |
 
 ### System Architecture
@@ -294,6 +297,19 @@ Backend runs on `http://localhost:4000`. All `/api/crm/*` and `/api/ai/*` routes
 | PUT | `/api/users/:id` | Update user name/role/password |
 | PUT | `/api/users/:id/toggle-active` | Enable/disable user (cannot self-disable) |
 | DELETE | `/api/users/:id` | Delete user (cannot self-delete, must reassign leads first) |
+
+### Audit Log (`/api/audit`) — ADMIN only
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/audit` | Query audit logs with filters `?entity=LEAD&action=CREATE&page=1&limit=50` |
+
+### Data Export (`/api/export`) — Auth required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/export/leads` | Export leads as CSV (SALES: own leads only) |
+| GET | `/api/export/contacts` | Export all contacts as CSV |
 
 ### Common Response Formats
 

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, Building2, Mail, Phone, MessageCircle, Target, User, Edit3, Trash2, X } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { Search, Plus, Building2, Mail, Phone, MessageCircle, Target, User, Edit3, Trash2, X, FileDown } from 'lucide-react';
+import { apiFetch, getCurrentUserRole } from '@/lib/api';
 import ContactFormModal from '@/components/modals/ContactFormModal';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
 
@@ -80,10 +80,22 @@ export default function ContactsPage() {
           <h1 className="text-xl font-bold text-white">Contacts</h1>
           <p className="text-sm text-gray-500">{contacts?.total || 0} contacts</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25">
-          <Plus className="w-4 h-4" /> New Contact
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={async () => {
+            const res = await apiFetch('/api/export/contacts');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `contacts_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+            URL.revokeObjectURL(url);
+          }}
+            className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-emerald-400 transition-all" title="Export CSV">
+            <FileDown className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25">
+            <Plus className="w-4 h-4" /> New Contact
+          </button>
+        </div>
       </div>
 
       <div className="glass-card p-4">

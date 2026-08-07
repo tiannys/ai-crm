@@ -245,3 +245,28 @@ model LineEvent {
   @@map("line_events")
 }
 
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  DISABLE
+  ENABLE
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String?     @map("user_id")
+  userName  String      @map("user_name")
+  action    AuditAction
+  entity    String      // LEAD, CONTACT, COMPANY, USER, AUTH
+  entityId  String?     @map("entity_id")
+  details   Json?
+  ipAddress String?     @map("ip_address")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([entity, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

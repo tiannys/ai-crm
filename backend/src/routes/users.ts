@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, requireRole, AuthPayload } from '../lib/auth';
 import { createChildLogger } from '../lib/logger';
+import { auditFromRequest } from '../services/audit.service';
 
 const log = createChildLogger('users-routes');
 export const usersRouter = Router();
@@ -72,6 +73,7 @@ usersRouter.post('/', async (req, res) => {
     });
 
     log.info({ userId: user.id, email }, 'User created');
+    auditFromRequest(req, 'CREATE', 'USER', user.id, { email, name, role: role || 'SALES' });
     res.status(201).json(user);
   } catch (error) {
     log.error({ error }, 'Failed to create user');
@@ -107,6 +109,7 @@ usersRouter.put('/:id', async (req, res) => {
     });
 
     log.info({ userId: user.id }, 'User updated');
+    auditFromRequest(req, 'UPDATE', 'USER', user.id, { name, role });
     res.json(user);
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -144,6 +147,7 @@ usersRouter.put('/:id/toggle-active', async (req, res) => {
     });
 
     log.info({ userId: updated.id, isActive: updated.isActive }, 'User active status toggled');
+    auditFromRequest(req, updated.isActive ? 'ENABLE' : 'DISABLE', 'USER', updated.id, { email: updated.email, name: updated.name });
     res.json(updated);
   } catch (error) {
     log.error({ error }, 'Failed to toggle user status');
@@ -182,6 +186,7 @@ usersRouter.delete('/:id', async (req, res) => {
 
     await prisma.user.delete({ where: { id: req.params.id } });
     log.info({ userId: req.params.id }, 'User deleted');
+    auditFromRequest(req, 'DELETE', 'USER', req.params.id, { email: user.email, name: user.name });
     res.json({ success: true });
   } catch (error) {
     log.error({ error }, 'Failed to delete user');

@@ -1,12 +1,40 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { logger } from './lib/logger';
 import { authRouter } from './routes/auth';
 import { crmRouter } from './routes/crm';
 import { aiRouter } from './routes/ai';
 import { lineRouter } from './routes/line';
 import { usersRouter } from './routes/users';
+import { auditRouter } from './routes/audit';
+import { exportRouter } from './routes/export';
+
+// ─── Rate Limiters ───────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,              // 5 login attempts per minute
+  message: { error: 'Too many login attempts. Please try again in a minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,             // 20 AI requests per minute per IP
+  message: { error: 'AI rate limit exceeded. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,            // 100 requests per minute per IP
+  message: { error: 'Rate limit exceeded.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -42,10 +70,12 @@ app.use((req, _res, next) => {
 });
 
 // ─── Routes ──────────────────────────────────────────────────────
-app.use('/api/auth', authRouter);
-app.use('/api/crm', crmRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/users', usersRouter);
+app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/crm', generalLimiter, crmRouter);
+app.use('/api/ai', aiLimiter, aiRouter);
+app.use('/api/users', generalLimiter, usersRouter);
+app.use('/api/audit', generalLimiter, auditRouter);
+app.use('/api/export', generalLimiter, exportRouter);
 
 // ─── Health Check ────────────────────────────────────────────────
 app.get('/health', (_req, res) => {

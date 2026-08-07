@@ -16,8 +16,9 @@ import {
   Search,
   Command,
   Shield,
+  ScrollText,
 } from 'lucide-react';
-import { getAuthToken, clearAuthToken, apiGet } from '@/lib/api';
+import { getAuthToken, clearAuthToken, apiGet, apiFetch } from '@/lib/api';
 import GlobalSearch from '@/components/GlobalSearch';
 
 const baseNavItems = [
@@ -63,7 +64,8 @@ export default function DashboardLayout({
       });
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     clearAuthToken();
     router.push('/login');
   };
@@ -118,7 +120,10 @@ export default function DashboardLayout({
         <nav className="flex-1 px-3 py-4 space-y-1">
           {[
             ...baseNavItems,
-            ...(user.role === 'ADMIN' ? [{ href: '/dashboard/users', label: 'Users', icon: Shield }] : []),
+            ...(user.role === 'ADMIN' ? [
+              { href: '/dashboard/users', label: 'Users', icon: Shield },
+              { href: '/dashboard/audit', label: 'Audit Log', icon: ScrollText },
+            ] : []),
           ].map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);

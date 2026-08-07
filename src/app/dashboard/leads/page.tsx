@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Search, Plus, Filter, ChevronLeft, ChevronRight,
-  Building2, User, X, Target, LayoutGrid, List, Trash2, Edit3, Users,
+  Building2, User, X, Target, LayoutGrid, List, Trash2, Edit3, Users, FileDown,
 } from 'lucide-react';
 import { formatCurrency, formatDate, getStageColor, getSourceIcon } from '@/lib/utils';
 import { apiFetch, getCurrentUserRole } from '@/lib/api';
@@ -151,6 +151,16 @@ export default function LeadsPage() {
               <List className="w-4 h-4" />
             </button>
           </div>
+          <button onClick={async () => {
+            const res = await apiFetch('/api/export/leads');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+            URL.revokeObjectURL(url);
+          }}
+            className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-emerald-400 transition-all" title="Export CSV">
+            <FileDown className="w-4 h-4" />
+          </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25">
             <Plus className="w-4 h-4" /> New Lead
