@@ -22,17 +22,21 @@ An AI-powered CRM system for sales teams with LINE OA integration, built as a te
 git clone <repository-url>
 cd ai-crm-mvp
 npm install
+cd backend && npm install && cd ..
 ```
 
 ### 2. Environment Setup
 ```bash
 cp .env.example .env.local
-# Edit .env.local with your database URL and API keys
+cp backend/.env.example backend/.env
+
+# Frontend: set NEXT_PUBLIC_API_URL (for example, http://localhost:4000)
+# Backend: set DATABASE_URL, JWT_SECRET, FRONTEND_URL, and provider credentials
 ```
 
 ### 3. Database Setup
 ```bash
-# Option A: Apply versioned migrations (recommended for production)
+# Option A: Apply versioned migrations from the project root (recommended for production)
 npx prisma migrate deploy
 
 # Option B: Push schema directly (quick setup for development)
@@ -42,10 +46,16 @@ npm run db:push
 npm run db:seed
 ```
 
-### 4. Run Development Server
+### 4. Run Development Servers
 ```bash
+# Terminal 1 — frontend
 npm run dev
 # Open http://localhost:3000
+
+# Terminal 2 — backend
+cd backend
+npm run dev
+# API runs at http://localhost:4000 and loads backend/.env automatically
 ```
 
 ### RBAC Permission Matrix
@@ -75,6 +85,7 @@ npm run dev
 | LINE | LINE Messaging API (Real + Mock adapter) |
 | Auth | JWT (stateless, bcrypt password hash) |
 | Security | Rate limiting (express-rate-limit), RBAC (3 roles) |
+| Attachments | Authenticated upload/download, local filesystem metadata in PostgreSQL |
 | Audit | Comprehensive audit log (login/logout, CRUD, exports) |
 | CI/CD | GitHub Actions (lint + test + build on every push/PR) |
 | Tunnel | Cloudflare Tunnel (ai-crm / ai-crm-api subdomains) |
@@ -223,6 +234,8 @@ sequenceDiagram
 
 Backend runs on `http://localhost:4000`. All `/api/crm/*` and `/api/ai/*` routes require `Authorization: Bearer <token>`.
 
+Login attempts are rate-limited independently. Authenticated `/api/auth/me` and `/api/auth/logout` requests do not consume the login-attempt quota.
+
 ### Auth (`/api/auth`)
 
 | Method | Path | Auth | Description |
@@ -247,7 +260,7 @@ Backend runs on `http://localhost:4000`. All `/api/crm/*` and `/api/ai/*` routes
 | GET | `/api/crm/leads/:id/messages` | List messages for a lead |
 | GET | `/api/crm/leads/:id/attachments` | List attachments for a lead |
 | POST | `/api/crm/leads/:id/attachments` | Upload file (multipart, 20MB max) |
-| GET | `/api/crm/attachments/:id/download` | Download attachment file |
+| GET | `/api/crm/attachments/:id/download` | Download attachment using the Bearer token header |
 | DELETE | `/api/crm/attachments/:id` | Delete attachment |
 | **Contacts** | | |
 | GET | `/api/crm/contacts?page=&search=` | List contacts with pagination |
@@ -448,25 +461,17 @@ The CRM runs with `LINE_USE_MOCK=true` by default. The mock adapter:
 ## 📋 Known Limitations & Production Next Steps
 
 ### Known Limitations
-- Auth uses credential provider (not suitable for production SSO)
-- No real-time updates (polling-based, should add WebSocket/SSE)
-- AI rate limiting not enforced at API level
-- No file upload for attachments
-- No email integration (only LINE and manual)
+- Auth uses JWT credential provider (not OAuth/SSO)
+- No real-time updates (polling-based)
+- No email integration (LINE OA and manual only)
+- Attachments use local disk storage; multi-instance production deployments need shared object storage
 
-### Production Improvements
-- [ ] Add Supabase Auth or Auth0 for production auth
+### Production Roadmap
 - [ ] WebSocket/SSE for real-time lead updates
-- [ ] Rate limiting middleware for AI endpoints
 - [ ] Redis cache for AI responses
-- [ ] Audit log for compliance
-- [ ] Role-based access control (RBAC)
-- [ ] Data export (CSV/Excel)
 - [ ] Email integration (SendGrid/SES)
-- [ ] Mobile app or PWA
-- [ ] CI/CD pipeline with GitHub Actions
-- [ ] Monitoring (Sentry, Datadog)
-- [ ] Load testing with k6
+- [ ] Move attachments to S3-compatible object storage
+- [ ] Monitoring & alerting (Sentry, Datadog)
 
 ---
 

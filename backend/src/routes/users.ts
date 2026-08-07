@@ -124,7 +124,7 @@ usersRouter.put('/:id', async (req, res) => {
 // ─── Toggle Active ───────────────────────────────────────────────
 usersRouter.put('/:id/toggle-active', async (req, res) => {
   try {
-    const currentUser = (req as AuthRequest).user;
+    const currentUser = (req as unknown as AuthRequest).user;
 
     // Prevent self-disable
     if (req.params.id === currentUser.id) {
@@ -158,7 +158,7 @@ usersRouter.put('/:id/toggle-active', async (req, res) => {
 // ─── Delete User ─────────────────────────────────────────────────
 usersRouter.delete('/:id', async (req, res) => {
   try {
-    const currentUser = (req as AuthRequest).user;
+    const currentUser = (req as unknown as AuthRequest).user;
 
     // Prevent self-delete
     if (req.params.id === currentUser.id) {

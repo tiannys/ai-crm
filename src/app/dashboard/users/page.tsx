@@ -295,6 +295,7 @@ export default function UsersPage() {
       {/* Delete Confirm */}
       {confirmDelete && (
         <ConfirmDialog
+          open
           title="Delete User"
           message={`Are you sure you want to delete ${confirmDelete.name}? This cannot be undone.`}
           confirmLabel="Delete"

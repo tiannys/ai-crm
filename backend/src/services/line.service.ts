@@ -89,7 +89,16 @@ class RealLineAdapter implements LineAdapter {
         headers: { Authorization: `Bearer ${this.channelAccessToken}` },
       });
       if (!res.ok) return null;
-      return await res.json();
+      const data: unknown = await res.json();
+      if (typeof data !== 'object' || data === null) return null;
+
+      const profile = data as Record<string, unknown>;
+      if (typeof profile.displayName !== 'string' || typeof profile.userId !== 'string') {
+        log.warn({ userId }, 'LINE profile response was invalid');
+        return null;
+      }
+
+      return { displayName: profile.displayName, userId: profile.userId };
     } catch {
       return null;
     }

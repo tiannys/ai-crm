@@ -70,7 +70,8 @@ app.use((req, _res, next) => {
 });
 
 // ─── Routes ──────────────────────────────────────────────────────
-app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth', authRouter);
 app.use('/api/crm', generalLimiter, crmRouter);
 app.use('/api/ai', aiLimiter, aiRouter);
 app.use('/api/users', generalLimiter, usersRouter);

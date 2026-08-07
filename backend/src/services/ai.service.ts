@@ -66,9 +66,17 @@ async function callGatewayProvider(systemPrompt: string, userPrompt: string): Pr
       return null;
     }
 
-    const data = await response.json();
-    // Support common gateway response formats
-    return data.response || data.text || data.content || data.result || JSON.stringify(data);
+    const data: unknown = await response.json();
+    // Support common gateway response formats without trusting external JSON.
+    if (typeof data === 'string') return data;
+    if (typeof data === 'object' && data !== null) {
+      const payload = data as Record<string, unknown>;
+      for (const key of ['response', 'text', 'content', 'result']) {
+        if (typeof payload[key] === 'string' && payload[key]) return payload[key];
+      }
+    }
+
+    return JSON.stringify(data) ?? null;
   } catch (error) {
     log.error({ error }, 'Gateway API call failed');
     return null;

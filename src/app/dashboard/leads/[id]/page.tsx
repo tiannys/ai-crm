@@ -225,9 +225,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } catch (err) { console.error('Failed to delete:', err); }
   };
 
-  const downloadAttachment = (attachmentId: string) => {
-    const token = getAuthToken();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/crm/attachments/${attachmentId}/download?token=${token}`, '_blank');
+  const downloadAttachment = async (attachmentId: string, fileName: string) => {
+    try {
+      const res = await apiFetch(`/api/crm/attachments/${attachmentId}/download`);
+      if (!res.ok) throw new Error(`Download failed with status ${res.status}`);
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error('Failed to download attachment:', err);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -606,7 +620,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       )}
                     </div>
                   </div>
-                  <button onClick={() => downloadAttachment(att.id)} className="p-1 opacity-0 group-hover:opacity-100 hover:text-cyan-400 text-gray-500 transition-all" title="Download">
+                  <button onClick={() => downloadAttachment(att.id, att.fileName)} className="p-1 opacity-0 group-hover:opacity-100 hover:text-cyan-400 text-gray-500 transition-all" title="Download">
                     <Download className="w-3 h-3" />
                   </button>
                   <button onClick={() => handleDeleteAttachment(att.id)} className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-400 text-gray-500 transition-all" title="Delete">

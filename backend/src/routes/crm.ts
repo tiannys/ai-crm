@@ -84,7 +84,7 @@ crmRouter.get('/leads', async (req, res) => {
 
 crmRouter.get('/leads/:id', async (req, res) => {
   try {
-    const user = (req as AuthRequest).user;
+    const user = (req as unknown as AuthRequest).user;
     const lead = await getLeadById(req.params.id);
     if (!lead) { res.status(404).json({ error: 'Lead not found' }); return; }
 
@@ -385,8 +385,9 @@ crmRouter.put('/companies/:id', async (req, res) => {
 // ─── Delete Endpoints ────────────────────────────────────────────
 crmRouter.delete('/leads/:id', requireRole('ADMIN'), async (req, res) => {
   try {
-    await prisma.lead.delete({ where: { id: req.params.id } });
-    auditFromRequest(req, 'DELETE', 'LEAD', req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await prisma.lead.delete({ where: { id } });
+    auditFromRequest(req, 'DELETE', 'LEAD', id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -399,8 +400,9 @@ crmRouter.delete('/leads/:id', requireRole('ADMIN'), async (req, res) => {
 
 crmRouter.delete('/contacts/:id', requireRole('ADMIN'), async (req, res) => {
   try {
-    await prisma.contact.delete({ where: { id: req.params.id } });
-    auditFromRequest(req, 'DELETE', 'CONTACT', req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await prisma.contact.delete({ where: { id } });
+    auditFromRequest(req, 'DELETE', 'CONTACT', id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -413,8 +415,9 @@ crmRouter.delete('/contacts/:id', requireRole('ADMIN'), async (req, res) => {
 
 crmRouter.delete('/companies/:id', requireRole('ADMIN'), async (req, res) => {
   try {
-    await prisma.company.delete({ where: { id: req.params.id } });
-    auditFromRequest(req, 'DELETE', 'COMPANY', req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await prisma.company.delete({ where: { id } });
+    auditFromRequest(req, 'DELETE', 'COMPANY', id);
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === 'P2025') {
@@ -663,6 +666,7 @@ crmRouter.get('/leads/:id/attachments', async (req, res) => {
 crmRouter.post('/leads/:id/attachments', upload.single('file'), async (req, res) => {
   try {
     const user = (req as unknown as AuthRequest).user;
+    const leadId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const file = req.file;
     if (!file) { res.status(400).json({ error: 'No file uploaded' }); return; }
 
@@ -671,7 +675,7 @@ crmRouter.post('/leads/:id/attachments', upload.single('file'), async (req, res)
 
     const attachment = await prisma.attachment.create({
       data: {
-        leadId: req.params.id,
+        leadId,
         uploadedBy: user.id,
         fileName: file.originalname,
         fileType: file.mimetype,
@@ -684,7 +688,7 @@ crmRouter.post('/leads/:id/attachments', upload.single('file'), async (req, res)
 
     // Auto-log to timeline
     await createActivity({
-      lead: { connect: { id: req.params.id } },
+      lead: { connect: { id: leadId } },
       user: { connect: { id: user.id } },
       type: 'FILE_ATTACHED',
       description: `File attached: ${file.originalname} (${category})`,
@@ -732,4 +736,3 @@ crmRouter.delete('/attachments/:id', async (req, res) => {
     }
   }
 });
-

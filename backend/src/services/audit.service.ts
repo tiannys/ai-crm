@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { createChildLogger } from '../lib/logger';
-import type { AuditAction } from '@prisma/client';
+import { Prisma, type AuditAction } from '@prisma/client';
 import { Request } from 'express';
 import { AuthPayload } from '../lib/auth';
 
@@ -36,7 +36,7 @@ export function recordAudit(params: {
       action,
       entity,
       entityId: entityId || null,
-      details: details || null,
+      details: details ? (details as Prisma.InputJsonObject) : Prisma.JsonNull,
       ipAddress,
     },
   }).catch((err) => {
