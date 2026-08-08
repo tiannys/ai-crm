@@ -80,9 +80,29 @@ export async function getLeadById(id: string) {
       messages: {
         orderBy: { createdAt: 'asc' },
       },
+      tasks: {
+        include: { assignee: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
+      attachments: {
+        orderBy: { createdAt: 'desc' },
+      },
       _count: { select: { activities: true, messages: true } },
     },
   });
+
+  if (!lead) return lead;
+
+  // If lead has a contact, fetch ALL messages from that contact
+  // so conversations tab & AI see the full history (not just messages linked to this lead)
+  if (lead.contactId) {
+    const allContactMessages = await prisma.message.findMany({
+      where: { contactId: lead.contactId },
+      orderBy: { createdAt: 'asc' },
+    });
+    (lead as any).messages = allContactMessages;
+  }
+
   return lead;
 }
 

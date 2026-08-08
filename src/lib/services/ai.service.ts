@@ -47,14 +47,31 @@ function buildLeadContext(lead: Awaited<ReturnType<typeof getLeadById>>): string
   if (!lead) return 'No lead data available';
 
   const activities = lead.activities
-    ?.slice(0, 10)
+    ?.slice(0, 20)
     .map((a) => `[${a.type}] ${a.description} (${new Date(a.createdAt).toLocaleDateString()})`)
     .join('\n') || 'No activities';
 
   const messages = lead.messages
-    ?.slice(-5)
-    .map((m) => `[${m.direction}] ${m.content}`)
+    ?.slice(-10)
+    .map((m) => `[${m.direction}] [${m.channel}] ${m.content} (${new Date(m.createdAt).toLocaleString()})`)
     .join('\n') || 'No messages';
+
+  const tasks = (lead as any).tasks
+    ?.map((t: any) => `[${t.status}] ${t.title} (Priority: ${t.priority}${t.dueDate ? `, Due: ${new Date(t.dueDate).toLocaleDateString()}` : ''}${t.assignee?.name ? `, Assignee: ${t.assignee.name}` : ''})`)
+    .join('\n') || 'No tasks';
+
+  const attachments = (lead as any).attachments
+    ?.map((a: any) => `[${a.category || 'other'}] ${a.fileName} (${a.fileType}, ${(a.fileSize / 1024).toFixed(1)}KB)`)
+    .join('\n') || 'No attachments';
+
+  const contactInfo = lead.contact
+    ? [
+        `${lead.contact.firstName} ${lead.contact.lastName} - ${lead.contact.position || 'N/A'}`,
+        lead.contact.email ? `Email: ${lead.contact.email}` : null,
+        lead.contact.phone ? `Phone: ${lead.contact.phone}` : null,
+        `LINE Connected: ${lead.contact.lineUserId ? 'Yes' : 'No'}`,
+      ].filter(Boolean).join(', ')
+    : 'N/A';
 
   return `
 LEAD INFORMATION:
@@ -63,17 +80,23 @@ LEAD INFORMATION:
 - Value: ${lead.value ? `฿${Number(lead.value).toLocaleString()}` : 'Not specified'}
 - Source: ${lead.source}
 - Company: ${lead.company?.name || 'N/A'} (${lead.company?.industry || 'N/A'})
-- Contact: ${lead.contact ? `${lead.contact.firstName} ${lead.contact.lastName} - ${lead.contact.position || 'N/A'}` : 'N/A'}
+- Contact: ${contactInfo}
 - Owner: ${lead.owner.name}
 - Expected Close: ${lead.expectedClose ? new Date(lead.expectedClose).toLocaleDateString() : 'Not set'}
 - Notes: ${lead.notes || 'None'}
 - Created: ${new Date(lead.createdAt).toLocaleDateString()}
 
-RECENT ACTIVITIES:
+RECENT ACTIVITIES (last 20):
 ${activities}
 
-RECENT MESSAGES:
+RECENT MESSAGES (last 10):
 ${messages}
+
+TASKS:
+${tasks}
+
+ATTACHMENTS:
+${attachments}
 `.trim();
 }
 
